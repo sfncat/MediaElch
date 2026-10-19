@@ -64,27 +64,37 @@ set "PATH=%MINGW_DIR%\bin;%QT_BIN%;%PATH%"
 REM ---- 4. build-time third-party deps: MediaInfoDLL (24.06) + ZenLib (master) ----
 echo [4/8] Fetch MediaInfoDLL and ZenLib (CMake adds project root to include path)
 if not exist "MediaInfoDLL\MediaInfoDLL.h" (
-    if not exist "%PKG%\MediaInfoDLL.7z" (
+    REM ensure a valid archive is present (missing or broken/empty -> re-download)
+    python -c "import urllib.request,os,sys; p=r'%PKG%\MediaInfoDLL.7z'; ok=os.path.exists(p) and os.path.getsize(p)>1000000; print('MediaInfoDLL archive valid:',ok); sys.exit(0 if ok else 1)"
+    if %errorlevel% neq 0 (
         echo   - Download MediaInfo DLL 24.06 (official mediaarea.net; proxy TLS OK)
-        python -c "import urllib.request,os; url='https://mediaarea.net/download/binary/libmediainfo0/24.06/MediaInfo_DLL_24.06_Windows_x64_WithoutInstaller.7z'; out=r'%PKG%\MediaInfoDLL.7z'; os.makedirs(os.path.dirname(out),exist_ok=True); open(out,'wb').write(urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'MediaElch-Build'}),timeout=300).read()); print('downloaded',out)"
+        if exist "%PKG%\MediaInfoDLL.7z" del /F "%PKG%\MediaInfoDLL.7z"
+        python -c "import urllib.request,os; url='https://mediaarea.net/download/binary/libmediainfo0/24.06/MediaInfo_DLL_24.06_Windows_x64_WithoutInstaller.7z'; out=r'%PKG%\MediaInfoDLL.7z'; os.makedirs(os.path.dirname(out),exist_ok=True); data=urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'MediaElch-Build'}),timeout=300).read(); open(out,'wb').write(data); print('downloaded',out,len(data),'bytes')"
+        if %errorlevel% neq 0 (echo [FAIL] MediaInfoDLL.7z download failed & exit /b 1)
     )
     if not exist "%PKG%\7zr.exe" (
         echo   - Download 7zr.exe (extracts BCJ2; py7zr does not)
         python -c "import urllib.request,os; url='https://7-zip.org/a/7zr.exe'; out=r'%PKG%\7zr.exe'; os.makedirs(os.path.dirname(out),exist_ok=True); open(out,'wb').write(urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'MediaElch-Build'}),timeout=120).read()); print('downloaded',out)"
+        if %errorlevel% neq 0 (echo [FAIL] 7zr.exe download failed & exit /b 1)
     )
     echo   - Extract and place at project root
     if exist "%PKG%\MediaInfo_extract" rmdir /s /q "%PKG%\MediaInfo_extract"
     "%PKG%\7zr.exe" x -y -bd -o"%PKG%\MediaInfo_extract" "%PKG%\MediaInfoDLL.7z"
+    if %errorlevel% neq 0 (echo [FAIL] 7zr extraction failed & exit /b 1)
+    if not exist "%PKG%\MediaInfo_extract\Developers\Source\MediaInfoDLL" (echo [FAIL] MediaInfoDLL source not found inside archive & exit /b 1)
     move "%PKG%\MediaInfo_extract\Developers\Source\MediaInfoDLL" "MediaInfoDLL" >nul
     if exist "%PKG%\MediaInfo_extract\MediaInfo.dll" move "%PKG%\MediaInfo_extract\MediaInfo.dll" "%PKG%\MediaInfo.dll" >nul
     rmdir /s /q "%PKG%\MediaInfo_extract"
+    if not exist "MediaInfoDLL\MediaInfoDLL.h" (echo [FAIL] MediaInfoDLL\MediaInfoDLL.h missing after extract & exit /b 1)
 )
 
 if not exist "ZenLib\Ztring.h" (
     echo   - Clone ZenLib (master) -^> ZenLib\
     if exist "%PKG%\tmp_ZenLib" rmdir /s /q "%PKG%\tmp_ZenLib"
     git clone --depth=1 --branch=master https://github.com/MediaArea/ZenLib.git "%PKG%\tmp_ZenLib"
+    if %errorlevel% neq 0 (echo [FAIL] ZenLib clone failed & exit /b 1)
     move "%PKG%\tmp_ZenLib\Source\ZenLib" "ZenLib" >nul
+    if not exist "ZenLib\Ztring.h" (echo [FAIL] ZenLib\Ztring.h missing after clone & exit /b 1)
     rmdir /s /q "%PKG%\tmp_ZenLib"
 )
 
