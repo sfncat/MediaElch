@@ -1,0 +1,28 @@
+[project]
+name = "mediaelch"
+version = "0.1.0"
+description = "Python tooling environment for building MediaElch (a C++/Qt6 project). Build tools only — MediaElch itself is built with CMake."
+authors = [
+    { name = "StackOF", email = "nexttominus@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[dependency-groups]
+# 构建期 Python 工具。
+# 安装方式（任选其一）：
+#   uv sync --group build
+#   uv pip install cmake ninja aqtinstall py7zr pefile
+# 版本号为实测可用下限；详见 build_windows.bat 与各依赖职责。
+build = [
+    "cmake>=3.28",      # 构建系统（实测 4.4.4）
+    "ninja>=1.10",      # Ninja 构建后端（实测 1.13.2）
+    "aqtinstall>=3.0",  # 下载 Qt6 / MinGW 官方二进制（实测 3.3.0）
+    "py7zr>=0.20",      # 备用 7z 解压（注：py7zr 不支持 BCJ2，脚本改用 7zr.exe）
+    "pefile>=2023.0.0", # PE 导入表依赖完整性自检
+]
+
+[tool.uv]
+# 这不是一个 Python 包，只是构建工具的虚拟环境；
+# 禁止 uv 尝试构建/安装“自身”（否则会因为没有 mediaelch 模块而失败）。
+package = false

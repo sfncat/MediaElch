@@ -54,6 +54,7 @@ doc/html
 *.pro.user*
 Makefile
 build*/
+dist/
 *.AppImage
 *.dmg
 *.app
